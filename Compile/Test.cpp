@@ -1,60 +1,48 @@
 #include <iostream>
 
+#include <unordered_map>
+#include <string>
+#include <vector>
+
 using namespace std;
 
-class Calc
+unordered_map<long long, int> has;
+unordered_map<int, int> has2;
+
+int getSize(int num)
 {
-public:
-    static void SwapNum(int &num1, int &num2)
-    {
-        int temp = num1;
-        num1 = num2;
-        num2 = temp;
-    }
-};
-
-class TestClass
-{
-public:
-    TestClass()
-    {
-        num1 = 5;
-        num2 = 10;
-    }
-
-    void printCurState(void (*executeFunc)(int &, int &))
-    {
-        cout << "last : " << num1;
-        executeFunc(num1, num2);
-        cout << " current : " << num1 << endl;
-    }
-
-private:
-    int num1, num2;
-};
-
-TestClass testClass = TestClass();
-
-// 함수 포인터
-void avatar1()
-{
-    testClass.printCurState(Calc::SwapNum);
+    return 3 * (num) * (num + 1) / 2;
 }
 
-// 람다식 활용
-void avatar2()
+long long solution(vector<int> weights)
 {
-    auto func = [](int &num1, int &num2)
+    long long answer = 0;
+
+    for (int data : weights)
     {
-        int temp = num1;
-        num1 = num2;
-        num2 = temp;
-    };
-    testClass.printCurState(func);
+        for (int i = 1; i <= 4; i++)
+        {
+            long long result = (long long)(data * i);
+            if (has[result] > 0)
+                answer += has[result];
+            has[result]++;
+        }
+    }
+
+    for (int data : weights)
+    {
+        has2[data]++;
+    }
+
+    for (auto [key, value] : has2)
+    {
+        answer -= getSize(value);
+    }
+
+    return answer;
 }
 
 int main()
 {
-    avatar1();
-    avatar2();
+    cout << solution({100, 180, 360, 100, 270}) << endl;
 }
