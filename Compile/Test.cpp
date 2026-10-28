@@ -1,48 +1,43 @@
 #include <iostream>
-
-#include <unordered_map>
-#include <string>
-#include <vector>
+#include <thread>
+#include <semaphore>
 
 using namespace std;
 
-unordered_map<long long, int> has;
-unordered_map<int, int> has2;
+int counter = 0;
 
-int getSize(int num)
+counting_semaphore<3> sem(3); // c++20 부터 지원
+
+auto work = [](int trial)
 {
-    return 3 * (num) * (num + 1) / 2;
-}
+    auto start = chrono::steady_clock::now();
 
-long long solution(vector<int> weights)
-{
-    long long answer = 0;
-
-    for (int data : weights)
+    sem.acquire();
+    for (int i = 0; i < 100; i++)
     {
-        for (int i = 1; i <= 4; i++)
-        {
-            long long result = (long long)(data * i);
-            if (has[result] > 0)
-                answer += has[result];
-            has[result]++;
-        }
+        counter++;
     }
+    sem.release();
 
-    for (int data : weights)
-    {
-        has2[data]++;
-    }
+    auto end = chrono::steady_clock::now();
 
-    for (auto [key, value] : has2)
-    {
-        answer -= getSize(value);
-    }
-
-    return answer;
-}
+    auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+    cout << trial << " trial : " << duration.count() << endl;
+};
 
 int main()
 {
-    cout << solution({100, 180, 360, 100, 270}) << endl;
+    thread t1(work, 1);
+    thread t2(work, 2);
+    thread t3(work, 3);
+    thread t4(work, 4);
+    thread t5(work, 5);
+    thread t6(work, 6);
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
+    t6.join();
 }
