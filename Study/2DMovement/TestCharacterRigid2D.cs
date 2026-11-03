@@ -24,9 +24,16 @@ public class TestCharacterRigid2D : MonoBehaviour
     private Vector2 FinalVelocity;
 
     public event Action OnGroundLand;
+    public event Action OnAirLand;
     public event Action OnJumpStopped;
 
-    public event Action<Vector2&> OnVectorChange;
+    public event VectorChangeHandler OnCalcVelocity;
+
+    [SerializeField] private ContactFilter2D GroundContactFilter;   //충돌을 허용할 레이어 목록
+    private GroundStateType GroundState = GroundStateType.Ground;
+    [SerializeField] private float skinWidth = 1.0f;    //스프라이트 별로 다르게 적용되는 바닥 보정거리
+    private float groundProbeDistance  = 0.2f;  //일괄로 적용되는 바닥 보정거리
+    private float acceptFloorDistance = 0.1f;
 
     private void Awake() {
         if(rb == null)  rb = GetComponent<Rigidbody2D>();
@@ -39,24 +46,6 @@ public class TestCharacterRigid2D : MonoBehaviour
         applyMoveCommand();
         rb.MovePosition(rb.position + FinalVelocity);
     }
-
-    public void AddVertical(float y){
-        
-    }
-
-
-    public void AddHorizontal(float x){
-
-    }
-
-    public void ScaleVertical(float y){
-        
-    }
-
-
-    public void ScaleHorizontal(float x){
-
-    }
     
     private void applyGroundState(){
         switch(getGroundState){
@@ -64,20 +53,39 @@ public class TestCharacterRigid2D : MonoBehaviour
                 break;
 
             case GroundStateType.Air : 
+                FinalVelocity.y -= Time.deltaTime * GravitySpeed;
                 break;
         }
     }
 
     private void applyMoveCommand(){
-        OnVectorChange(FinalVelocity);
+        OnCalcVelocity(ref FinalVelocity);
     }
 
     private GroundStateType getGroundState{
         get{
-            return GroundStateType.Ground;
+            if(FindGround){
+                if(GroundState != GroundStateType.Ground) OnGroundLand?.Invoke();
+                GroundState = GroundStateType.Ground;
+            }
+            else{
+                if(GroundState != GroundStateType.Air) OnAirLand?.Invoke();
+                GroundState = GroundStateType.Air;
+            }
+            return GroundState;
         }
     }
 
-    
+    private bool FindGround{
+        get{
+            List<RaycastHit2D> hits = new List<RaycastHit2D>(16);
+            capsule.Cast(rb.position, rb.rotation, Vector2.down, GroundContactFilter, hits, skinWidth + groundProbeDistance);
+        
+            foreach (var hit in hits){
+                if(hit.normal.y > 0.6f && hit.distance < acceptFloorDistance) return true;
+            }
 
+            return false;
+        }
+    }
 }
