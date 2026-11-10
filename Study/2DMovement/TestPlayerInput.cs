@@ -11,7 +11,7 @@ public class TestPlayerInput : MonoBehaviour
     [SerializeField] private float MaxKoyoteTime = 0.2f;
 
     [SerializeField] private float jumpSpeed = 5.0f;
-    [SerializeField] private AnimationCurve JumpAccelCurve;
+    [SerializeField] private AnimationCurve JumpForceCurve;
     [SerializeField] private float JumpRestTime = 0.2f; //점프가 연속으로 입력되는 경우 방지
     [SerializeField] private float JumpDuration = 2.0f; //점프의 최대 지속시간, 넘으면 점프 가속 중지
     private float LastJumpTime = 0.0f;
@@ -19,7 +19,7 @@ public class TestPlayerInput : MonoBehaviour
     private int CurJumpCount = 0;
 
     /*      이동 관련       */
-    [SerializeField] private AnimationCurve RunAccelCurve;
+    [SerializeField] private AnimationCurve RunForceCurve;
     private bool isRunning = false;
     private bool isMoving = false;
     private int XDir = 0;
@@ -85,7 +85,7 @@ public class TestPlayerInput : MonoBehaviour
         XDir = curPos;
     }
 
-    private void calcJump(ref Vector2 vec){
+    private void calcJump(ref Vector2 vec, Vector2 resistance){
         LastJumpTime += Time.deltaTime;
         
         if(LastJumpTime >= JumpDuration){
@@ -93,12 +93,16 @@ public class TestPlayerInput : MonoBehaviour
             return;
         }
 
-        vec.y += JumpAccelCurve.Evaluate(LastJumpTime / JumpDuration) * Time.deltaTime * jumpSpeed;
+        float t = Mathf.Clamp01(LastJumpTime / JumpDuration);
+        float force = JumpForceCurve.Evaluate(t) * jumpSpeed;
+
+        vec.y += (force - resistance.y) * Time.deltaTime;
     }
 
-    private void calcMove(ref Vector2 vec){
+    private void calcMove(ref Vector2 vec, Vector2 resistance){
         CurRunTime += Time.deltaTime;
         float t = Mathf.Clamp01(CurRunTime / MaxRunTime);
-        vec.x += RunAccelCurve.Evaluate(t) * Time.deltaTime * runSpeed * XDir;
+        float force = RunForceCurve.Evaluate(t) * runSpeed * XDir;  //초기 이동에서 점점 힘이 커지도록
+        vec.x += (force - resistance.x) * Time.deltaTime;
     }
 }

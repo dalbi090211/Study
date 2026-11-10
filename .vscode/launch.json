@@ -8,8 +8,9 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/workspace/Study/Compile",
-      "program": "c:/workspace/Study/Compile/build/Debug/outDebug",
+      "cwd": "${fileDirname}",
+      "program": "${fileDirname}/${fileBasenameNoExtension}.exe",
+      "preLaunchTask": "C/C++: g++.exe build active file",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

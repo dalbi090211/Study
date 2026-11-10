@@ -14,20 +14,20 @@ public enum LocoStateType{  //virtual player 만들어서 애니메이터 연동
     Fall
 }
 
-[RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
+[RequireComponent(typeof(CapsuleCollider2D))]
 public class TestCharacterRigid2D : MonoBehaviour
 {
-    [SerializeField] private Rigidbody2D rb;
     [SerializeField] private CapsuleCollider2D capsule;
     [SerializeField] private float GravitySpeed = 0.0f;
 
-    private Vector2 FinalVelocity;
+    private Vector2 Velocity = Vector2.zero;   //이전 속력
+    [SerializeField] private float dragCoefficient = 0.2f;   //저항계수
+    public event Action OnGroundIn;
+    public event Action OnGroundOut;
+    public event Action OnAirIn;
+    public event Action OnAirOut;
 
-    public event Action OnGroundLand;
-    public event Action OnAirLand;
-    public event Action OnJumpStopped;
-
-    public event VectorChangeHandler OnCalcVelocity;
+    public event VelChangeHandler OnCalcVelocity;
 
     [SerializeField] private ContactFilter2D GroundContactFilter;   //충돌을 허용할 레이어 목록
     private GroundStateType GroundState = GroundStateType.Ground;
@@ -36,40 +36,66 @@ public class TestCharacterRigid2D : MonoBehaviour
     private float acceptFloorDistance = 0.1f;
 
     private void Awake() {
-        if(rb == null)  rb = GetComponent<Rigidbody2D>();
         if(capsule == null) capsule = GetComponent<CapsuleCollider2D>();
+
+        OnGroundIn -= OnGroundLanded;
+        OnGroundIn += OnGroundLanded;
     }
 
     private void FixedUpdate(){
-        FinalVelocity = new Vector2(0.0f, 0.0f);
-        applyGroundState();
+        applyRealPhysics();
+        applyFakePhysics();
+
+        // rb.MovePosition(rb.position + FinalVelocity);
+    }
+
+    private void applyRealPhysics()
+    {
         applyMoveCommand();
-        rb.MovePosition(rb.position + FinalVelocity);
+        applyGroundState();
+        
+        transform.position += (Vector3)Velocity;
+    }
+
+    private void applyFakePhysics()
+    {
+        
+    }
+
+    private void applyMoveCommand(){
+        foreach (var handler in OnCalcVelocity.GetInvocationList())
+        {
+            Vector2 resistance = Velocity * dragCoefficient;
+            ((VelChangeHandler)handler)(ref Velocity, resistance);
+        }
+    }
+
+    private void OnGroundLanded(){
+        OnAirOut?.Invoke();
+
+        Velocity.y = 0.0f;
     }
     
     private void applyGroundState(){
         switch(getGroundState){
             case GroundStateType.Ground : 
+                
                 break;
 
             case GroundStateType.Air : 
-                FinalVelocity.y -= Time.deltaTime * GravitySpeed;
+                Velocity.y -= Time.deltaTime * GravitySpeed;
                 break;
         }
-    }
-
-    private void applyMoveCommand(){
-        OnCalcVelocity(ref FinalVelocity);
     }
 
     private GroundStateType getGroundState{
         get{
             if(FindGround){
-                if(GroundState != GroundStateType.Ground) OnGroundLand?.Invoke();
+                if(GroundState != GroundStateType.Ground) OnGroundIn?.Invoke();
                 GroundState = GroundStateType.Ground;
             }
             else{
-                if(GroundState != GroundStateType.Air) OnAirLand?.Invoke();
+                if(GroundState != GroundStateType.Air) OnAirIn?.Invoke();
                 GroundState = GroundStateType.Air;
             }
             return GroundState;
@@ -79,8 +105,20 @@ public class TestCharacterRigid2D : MonoBehaviour
     private bool FindGround{
         get{
             List<RaycastHit2D> hits = new List<RaycastHit2D>(16);
-            capsule.Cast(rb.position, rb.rotation, Vector2.down, GroundContactFilter, hits, skinWidth + groundProbeDistance);
-        
+
+            var tr = capsule.transform;
+            Vector2 scale = new Vector2(Mathf.Abs(tr.localScale.x), Mathf.Abs(tr.localScale.y));
+            Physics2D.CapsuleCast(
+                capsule.bounds.center, 
+                capsule.size * scale, 
+                capsule.direction, 
+                0.0f, 
+                Vector2.down, 
+                GroundContactFilter, 
+                hits, 
+                groundProbeDistance
+            );
+
             foreach (var hit in hits){
                 if(hit.normal.y > 0.6f && hit.distance < acceptFloorDistance) return true;
             }
